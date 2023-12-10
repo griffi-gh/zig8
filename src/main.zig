@@ -16,7 +16,7 @@ pub fn main() !void {
     // const data = try file.readToEndAlloc(allocator.allocator(), 0xfff - 0x200);
     // file.close();
 
-    var emu = chip8.Chip8.init();
+    var emu = comptime chip8.Chip8.init();
     emu.load_rom(ROM);
 
     raylib.SetTraceLogLevel(raylib.LOG_WARNING);

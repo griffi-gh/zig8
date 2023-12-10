@@ -70,7 +70,9 @@ pub const Chip8 = struct {
                 const offset_y: u5 = @truncate(self.registers[yr]);
                 self.registers[0xF] = 0;
                 for (0..n) |y| {
-                    const mem_row = BitSet(8){ .mask = self.memory[self.idx + y] };
+                    const mem_row_raw = self.memory[self.idx + y];
+                    if (mem_row_raw == 0) continue;
+                    const mem_row = BitSet(8){ .mask = mem_row_raw };
                     //const row_iter = row.iterator(.{});
                     inline for (0..8) |x| {
                         if (mem_row.isSet(7 - x)) {
