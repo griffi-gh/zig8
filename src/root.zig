@@ -126,7 +126,7 @@ pub const Chip8 = struct {
                     }
                 }
             },
-            else => std.log.err("unimplemented opcode {}", .{op}),
+            else => std.log.err("unimplemented opcode {x}", .{op}),
         }
     }
 };
