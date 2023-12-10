@@ -12,6 +12,5 @@
         "src",
         "build.zig",
         "build.zig.zon",
-        "ibm.ch8",
     },
 }
