@@ -20,10 +20,15 @@ const font: [80]u8 = [_]u8{
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 };
 
+fn unimplemented(op: u16) void {
+    std.log.err("unimplemented opcode {x}", .{op});
+}
+
 pub const Chip8 = struct {
     memory: [4096]u8,
     registers: [16]u8,
     display: [32]BitSet(64),
+    keyboard: BitSet(16),
     idx: u16,
     pc: u16,
     sp: u16,
@@ -35,6 +40,7 @@ pub const Chip8 = struct {
             .memory = [_]u8{0} ** 4096,
             .registers = [_]u8{0} ** 16,
             .display = [_]BitSet(64){BitSet(64).initEmpty()} ** 32,
+            .keyboard = BitSet(16).initEmpty(),
             .idx = 0,
             .pc = 0x200,
             .sp = 0xfff,
@@ -63,9 +69,23 @@ pub const Chip8 = struct {
         self.pc += 2;
         switch (op) {
             0x00E0 => self.display = [_]BitSet(64){BitSet(64).initEmpty()} ** 32,
+            0x00EE => {
+                self.pc = std.mem.readInt(u16, self.memory[self.sp..][0..2], .big);
+                self.sp += 2;
+            },
             0x1000...0x1FFF => self.pc = op & 0xFFF,
+            0x2000...0x2FFF => {
+                self.sp -= 2;
+                std.mem.writeInt(u16, self.memory[self.sp..][0..2], self.pc, .big);
+                self.pc = op & 0xFFF;
+            },
+            0x3000...0x3FFF => {
+                if (reg_x.* == (op & 0xFF)) {
+                    self.pc += 2;
+                }
+            },
             0x6000...0x6FFF => reg_x.* = @truncate(op),
-            0x7000...0x7FFF => reg_x.* += @truncate(op),
+            0x7000...0x7FFF => reg_x.* +%= @truncate(op),
             0x8000...0x8FFF => {
                 const reg_f = &self.registers[0xF];
                 switch (op & 0xF) {
@@ -96,7 +116,7 @@ pub const Chip8 = struct {
                         reg_f.* = reg_y.* >> 7;
                         reg_x.* = reg_y.* << 1;
                     },
-                    else => unreachable,
+                    else => unimplemented(op),
                 }
             },
             0x9000...0x9FFF => {
@@ -105,7 +125,7 @@ pub const Chip8 = struct {
                 }
             },
             0xA000...0xAFFF => self.idx = op & 0x0FFF,
-            0xB000...0xBFFF => self.pc = (op & 0x0FFF) + @as(u16, self.registers[0]),
+            0xB000...0xBFFF => self.pc = (op & 0x0FFF) +% @as(u16, self.registers[0]),
             0xC000...0xCFFF => reg_x.* = 0, //TODO Random
             0xD000...0xDFFF => {
                 const offset_x: u6 = @truncate(reg_x.*);
@@ -126,7 +146,40 @@ pub const Chip8 = struct {
                     }
                 }
             },
-            else => std.log.err("unimplemented opcode {x}", .{op}),
+            0xE000...0xEFFF => switch (op & 0xFF) {
+                0x9E => {
+                    if (self.keyboard.isSet(reg_x.*)) {
+                        self.pc += 2;
+                    }
+                },
+                0xA1 => {
+                    if (!self.keyboard.isSet(reg_x.*)) {
+                        self.pc += 2;
+                    }
+                },
+                else => unimplemented(op),
+            },
+            0xF000...0xFFFF => switch (op & 0xFF) {
+                0x07 => reg_x.* = self.delay_timer,
+                0x15 => self.delay_timer = reg_x.*,
+                0x18 => self.sound_timer = reg_x.*,
+                0x1E => self.idx +%= reg_x.*,
+                0x55 => {
+                    for (0..op_x + 1) |i| {
+                        self.memory[self.idx + i] = self.registers[i];
+                    }
+                },
+                0x65 => {
+                    for (0..op_x + 1) |i| {
+                        self.registers[i] = self.memory[self.idx + i];
+                    }
+                },
+                else => unimplemented(op),
+            },
+            else => unimplemented(op),
         }
+
+        if (self.delay_timer > 0) self.delay_timer -= 1;
+        if (self.sound_timer > 0) self.sound_timer -= 1;
     }
 };
