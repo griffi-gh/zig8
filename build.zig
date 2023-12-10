@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
+    const raylib_artifact = raylib.artifact("raylib");
 
     const lib = b.addStaticLibrary(.{
         .name = "zig8",
@@ -25,8 +26,8 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(exe);
 
-    exe.installLibraryHeaders(raylib.artifact("raylib"));
-    exe.linkLibrary(raylib.artifact("raylib"));
+    exe.installLibraryHeaders(raylib_artifact);
+    exe.linkLibrary(raylib_artifact);
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
