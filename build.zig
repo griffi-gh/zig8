@@ -25,6 +25,8 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(exe);
 
+    //HACK: todo figure out how to add raylib properly
+    exe.addIncludePath(raylib.path("src"));
     exe.linkLibrary(raylib.artifact("raylib"));
 
     const run_cmd = b.addRunArtifact(exe);
