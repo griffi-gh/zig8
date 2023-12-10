@@ -58,53 +58,58 @@ pub const Chip8 = struct {
         const op_x: u4 = @truncate(op >> 8);
         const op_y: u4 = @truncate(op >> 4);
         const op_n: u4 = @truncate(op);
+        const reg_x = &self.registers[op_x];
+        const reg_y = &self.registers[op_y];
         self.pc += 2;
         switch (op) {
             0x00E0 => self.display = [_]BitSet(64){BitSet(64).initEmpty()} ** 32,
-            0x1000...0x1FFF => self.pc = op & 0x0FFF,
-            0x6000...0x6FFF => self.registers[op_x] = @truncate(op),
-            0x7000...0x7FFF => self.registers[op_x] += @truncate(op),
-            0x8000...0x8FF7, 0x8FFE => {
-                const x = &self.registers[op_x];
-                const y = &self.registers[op_y];
-                const f = &self.registers[0xF];
+            0x1000...0x1FFF => self.pc = op & 0xFFF,
+            0x6000...0x6FFF => reg_x.* = @truncate(op),
+            0x7000...0x7FFF => reg_x.* += @truncate(op),
+            0x8000...0x8FFF => {
+                const reg_f = &self.registers[0xF];
                 switch (op & 0xF) {
-                    0x0 => x.* = y.*,
-                    0x1 => x.* |= y.*,
-                    0x2 => x.* &= y.*,
-                    0x3 => x.* ^= y.*,
+                    0x0 => reg_x.* = reg_y.*,
+                    0x1 => reg_x.* |= reg_y.*,
+                    0x2 => reg_x.* &= reg_y.*,
+                    0x3 => reg_x.* ^= reg_y.*,
                     0x4 => {
-                        const result = @addWithOverflow(x.*, y.*);
-                        x.* = result[0];
-                        f.* = @as(u8, result[1]);
+                        const result = @addWithOverflow(reg_x.*, reg_y.*);
+                        reg_x.* = result[0];
+                        reg_f.* = @as(u8, result[1]);
                     },
                     0x5 => {
-                        const result = @subWithOverflow(x.*, y.*);
-                        x.* = result[0];
-                        f.* = @as(u8, ~result[1]);
+                        const result = @subWithOverflow(reg_x.*, reg_y.*);
+                        reg_x.* = result[0];
+                        reg_f.* = @as(u8, ~result[1]);
                     },
                     0x6 => {
-                        f.* = y.* & 0x1;
-                        x.* = y.* >> 1;
+                        reg_f.* = reg_y.* & 0x1;
+                        reg_x.* = reg_y.* >> 1;
                     },
                     0x7 => {
-                        const result = @subWithOverflow(y.*, x.*);
-                        x.* = result[0];
-                        f.* = @as(u8, ~result[1]);
+                        const result = @subWithOverflow(reg_y.*, reg_x.*);
+                        reg_x.* = result[0];
+                        reg_f.* = @as(u8, ~result[1]);
                     },
                     0xE => {
-                        f.* = y.* >> 7;
-                        x.* = y.* << 1;
+                        reg_f.* = reg_y.* >> 7;
+                        reg_x.* = reg_y.* << 1;
                     },
                     else => unreachable,
                 }
             },
+            0x9000...0x9FFF => {
+                if (reg_x.* != reg_y.*) {
+                    self.pc += 2;
+                }
+            },
             0xA000...0xAFFF => self.idx = op & 0x0FFF,
             0xB000...0xBFFF => self.pc = (op & 0x0FFF) + @as(u16, self.registers[0]),
-            0xC000...0xCFFF => self.registers[op_x] = 0, //TODO Random
+            0xC000...0xCFFF => reg_x.* = 0, //TODO Random
             0xD000...0xDFFF => {
-                const offset_x: u6 = @truncate(self.registers[op_x]);
-                const offset_y: u5 = @truncate(self.registers[op_y]);
+                const offset_x: u6 = @truncate(reg_x.*);
+                const offset_y: u5 = @truncate(reg_y.*);
                 self.registers[0xF] = 0;
                 for (0..op_n) |y| {
                     const mem_row = BitSet(8){ .mask = self.memory[self.idx + y] };
