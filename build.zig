@@ -4,6 +4,11 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const raylib = b.dependency("raylib", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const lib = b.addStaticLibrary(.{
         .name = "zig8",
         .root_source_file = .{ .path = "src/root.zig" },
@@ -20,8 +25,7 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(exe);
 
-    try exe.addVcpkgPaths(.dynamic);
-    exe.linkSystemLibrary("raylib");
+    exe.linkLibrary(raylib.artifact("raylib"));
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
