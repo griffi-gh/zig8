@@ -70,20 +70,17 @@ pub const Chip8 = struct {
                 const offset_y: u5 = @truncate(self.registers[yr]);
                 self.registers[0xF] = 0;
                 for (0..n) |y| {
-                    const mem_row_raw = self.memory[self.idx + y];
-                    if (mem_row_raw == 0) continue;
-                    const mem_row = BitSet(8){ .mask = mem_row_raw };
-                    //const row_iter = row.iterator(.{});
-                    inline for (0..8) |x| {
-                        if (mem_row.isSet(7 - x)) {
-                            const display_x = x + @as(usize, offset_x);
-                            const display_y = y + @as(usize, offset_y);
-                            const display_row = &self.display[display_y];
-                            if (display_row.isSet(display_x)) {
-                                self.registers[0xF] = 1;
-                            }
-                            display_row.toggle(display_x);
+                    const mem_row = BitSet(8){ .mask = self.memory[self.idx + y] };
+                    if (mem_row.mask == 0) continue;
+                    var mem_row_iter = mem_row.iterator(.{});
+                    while (mem_row_iter.next()) |x| {
+                        const display_x = (7 - x) + @as(usize, offset_x);
+                        const display_y = y + @as(usize, offset_y);
+                        const display_row = &self.display[display_y];
+                        if (display_row.isSet(display_x)) {
+                            self.registers[0xF] = 1;
                         }
+                        display_row.toggle(display_x);
                     }
                 }
             },
