@@ -47,17 +47,45 @@ pub const Chip8 = struct {
         return chip8;
     }
 
-    pub fn load_rom(self: *Chip8, rom: []u8) void {
-        for (rom, 0..) |byte, i| {
+    pub fn load_rom(self: *Chip8, rom: []const u8) void {
+        for (rom, 0x200..) |byte, i| {
             self.memory[i] = byte;
         }
     }
 
     pub fn step(self: *Chip8) void {
-        const op = std.mem.readInt(u16, &.{ self.memory[self.pc], self.memory[self.pc + 1] }, .big);
+        const op = std.mem.readInt(u16, self.memory[self.pc..][0..2], .big);
         self.pc += 2;
         switch (op) {
-            else => std.debug.panic("unimplemented opcode {}", .{op}),
+            0x00E0 => self.display = [_]BitSet(64){BitSet(64).initEmpty()} ** 32,
+            0x1000...0x1FFF => self.pc = op & 0x0FFF,
+            0x6000...0x6FFF => self.registers[(op & 0x0F00) >> 8] = @truncate(op),
+            0x7000...0x7FFF => self.registers[(op & 0x0F00) >> 8] += @truncate(op),
+            0xA000...0xAFFF => self.idx = op & 0x0FFF,
+            0xD000...0xDFFF => {
+                const n: u4 = @truncate(op);
+                const xr: u4 = @truncate(op >> 8);
+                const yr: u4 = @truncate(op >> 4);
+                const offset_x: u6 = @truncate(self.registers[xr]);
+                const offset_y: u5 = @truncate(self.registers[yr]);
+                self.registers[0xF] = 0;
+                for (0..n) |y| {
+                    const mem_row = BitSet(8){ .mask = self.memory[self.idx + y] };
+                    //const row_iter = row.iterator(.{});
+                    inline for (0..8) |x| {
+                        if (mem_row.isSet(7 - x)) {
+                            const display_x = x + @as(usize, offset_x);
+                            const display_y = y + @as(usize, offset_y);
+                            const display_row = &self.display[display_y];
+                            if (display_row.isSet(display_x)) {
+                                self.registers[0xF] = 1;
+                            }
+                            display_row.toggle(display_x);
+                        }
+                    }
+                }
+            },
+            else => std.log.err("unimplemented opcode {}", .{op}),
         }
     }
 };

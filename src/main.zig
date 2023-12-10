@@ -17,7 +17,7 @@ pub fn main() !void {
     // file.close();
 
     var emu = chip8.Chip8.init();
-    emu.load_rom(@constCast(ROM));
+    emu.load_rom(ROM);
 
     raylib.SetTraceLogLevel(raylib.LOG_WARNING);
     raylib.SetConfigFlags(raylib.FLAG_VSYNC_HINT);
