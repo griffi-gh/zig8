@@ -55,7 +55,10 @@ pub fn main() !void {
     var pixels = [_]u8{0} ** (64 * 32);
 
     while (!raylib.WindowShouldClose()) {
-        emu.step();
+        for (0..16) |_| {
+            emu.step();
+        }
+
         for (emu.display, 0..32) |row_data, row| {
             for (0..64) |col| {
                 pixels[row * 64 + col] = if (row_data.isSet(col)) 255 else 0;
